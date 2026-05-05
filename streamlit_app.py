@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 
+summary_df = pd.read_csv("summary.csv")
 # Dummy values
 energy_server = {
     "ResNet-50": [0.55, 1, 0.4, 2, 0.55, 0.75, 1, 2.3],
@@ -43,10 +44,11 @@ if st.button(heading, key="model1_btn", icon=":material/help:"):
     help(heading, description, page_link)
 
 model_options = ["ResNet-50", "ResNet-101", "ResNet-152"]
-model_selection = st.pills("", model_options, default=model_options[0], selection_mode="single")
+model_selection = st.pills("", model_options, default=model_options[0], selection_mode="single", label_visibility="hidden")
+model_selection = model_selection.lower().split("-")
+model = f"{model_selection[0]}{model_selection[1]}"
 
-
-st.markdown("#### Partitioning")
+st.markdown("#### :scissors: Partitioning")
 heading = "How does model partitioning work?"
 if st.button(heading, key="partitioning_btn", icon=":material/help:"):
     description = '''A machine learning model consists of multiple layers:  
@@ -71,7 +73,7 @@ with part_columns[2]:
     st.badge("Server", color="blue")
 
 with part_columns[1]:
-    partition_point = st.slider("", 1, 8, 8)
+    partition_point = st.slider("Layers", 1, 8, 8)
 columns = st.columns(10, gap="small")
 
 for i in range(1, partition_point+1):
@@ -94,7 +96,7 @@ for i in range(partition_point+1, 9):
 
 
 
-st.markdown("### Estimated Carbon Footprint")
+st.markdown("### :cloud: Estimated Carbon Footprint")
 heading = "How is the carbon footprint calculated for ML model training?"
 if st.button(heading, key="carbon_btn", icon=":material/help:"):
     description = '''The carbon emissions are calculated with the following formula:    
@@ -103,8 +105,29 @@ if st.button(heading, key="carbon_btn", icon=":material/help:"):
     '''
     page_link = 1
     help(heading, description, page_link)
-    
-carbon_emissions = round((ci_client * energy_client[model_selection][partition_point-1]) + (ci_server * energy_server[model_selection][partition_point-1]), 2)
-change = 2
-st.metric("Carbon Emissions", carbon_emissions, change)
+
+carbon_emissions = []
+
+energy_client = summary_df[(summary_df["model"] == model)]["energy_client"]
+energy_server = summary_df[(summary_df["model"] == model)]["energy_server"]
+carbon_client = round(ci_client * energy_client, 2)
+carbon_server = round(ci_server * energy_server, 2)
+carbon_total = round(carbon_client + carbon_server, 2)
+
+carbon_emissions = carbon_total[partition_point-1]
+change = round((((carbon_emissions - carbon_total[7])/ carbon_total[7]) * 100))
+
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown("**Full Model on Client**")
+    st.metric("gCO2", f"{carbon_total[7]}")
+with col2:
+    if partition_point < 8 and partition_point > 1:
+        text = f"{partition_point} Layers on Client"
+    elif partition_point == 1:
+        text = f"{partition_point} Layer on Client"
+    else:
+        text = "Full Model on Client"
+    st.markdown(f"**{text}**")
+    st.metric("gCO2", f"{carbon_emissions}", f"{change} %", delta_color="inverse")
 
