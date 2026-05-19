@@ -22,9 +22,41 @@ if st.button(heading, key="ci_button", icon=":material/help:"):
     page_link = "background.py"
     label = "Carbon-Aware Computing"
     help(heading, description, page_link, label)
+cols = st.columns(2)
 
-ci_client = st.slider("Client [gCO2e/kWh]", 0, 1000, 800)
-ci_server = st.slider("Server [gCO2e/kWh]", 0, 1000, 2)
+with cols[0]:
+    client_location = st.radio(
+    "Client Location",
+    [":green-background[South Scotland]", ":yellow-background[Netherlands]", ":red-background[Poland]"],
+    captions=[
+        "2 gCO2/kWh (low)",
+        "253 gCO2/kWh (medium)",
+        "565 gCO2/kWh (high)",
+    ],
+)
+    
+with cols[1]:
+    server_location = st.radio(
+    "Server Location",
+    [":green-background[Stockholm]", ":yellow-background[London]", ":red-background[Frankfurt]"],
+    captions=[
+        "20 gCO2/kWh (low)",
+        "180 gCO2/kWh (medium)",
+        "342 gCO2/kWh (high)",
+    ],
+)
+
+carbon_intensities = {
+    ":green-background[South Scotland]": 2,
+    ":yellow-background[Netherlands]": 253,
+    ":red-background[Poland]": 565,
+    ":green-background[Stockholm]": 20,
+    ":yellow-background[London]": 180,
+    ":red-background[Frankfurt]": 342
+}
+
+ci_client = carbon_intensities[client_location]
+ci_server = carbon_intensities[server_location]
 
 
 st.markdown("#### Model")
@@ -35,10 +67,10 @@ if st.button(heading, key="model1_btn", icon=":material/help:"):
     label = "Machine Learning Model Partitioning"
     help(heading, description, page_link, label)
 
-model_options = ["ResNet-50", "ResNet-101", "ResNet-152"]
-model_selection = st.pills("", model_options, default=model_options[0], selection_mode="single", label_visibility="hidden")
-model_selection = model_selection.lower().split("-")
-model = f"{model_selection[0]}{model_selection[1]}"
+model_options = ["small", "medium", "large"]
+model_selection = st.pills("Size", model_options, default=model_options[0], selection_mode="single", label_visibility="hidden")
+model_names = {"small": "resnet50", "medium": "resnet101", "large": "resnet152"}
+model = model_names[model_selection]
 
 st.markdown("#### :scissors: Partitioning")
 heading = "How does model partitioning work?"
@@ -66,23 +98,21 @@ with part_columns[2]:
     st.badge("Server", color="blue")
 
 with part_columns[1]:
-    partition_point = st.slider("Layers", 1, 8, 8)
+    partition_point = st.slider("Blocks", 1, 8, 8)
 columns = st.columns(10, gap="small")
 
+icons = [":material/panorama:", ":material/filter_alt:", ":material/stacks:", 
+         ":material/stacks:", ":material/stacks:", ":material/stacks:",
+         ":material/filter_alt:", ":material/lightbulb:"]
+
 for i in range(1, partition_point+1):
-    if i == 1:
-        icon = ":material/panorama:"
-    else:
-        icon = ":material/flowchart:"
+    icon = icons[i-1]
     col = columns[i]
     with col:
         st.error("", icon=icon)
 
 for i in range(partition_point+1, 9):
-    if i == 8:
-        icon = ":material/lightbulb:"
-    else:
-        icon = ":material/flowchart:"
+    icon = icons[i-1]
     col = columns[i]
     with col:
         st.info(icon)
@@ -105,23 +135,33 @@ carbon_emissions = []
 energy_client = summary_df[(summary_df["model"] == model)]["energy_client"]
 energy_server = summary_df[(summary_df["model"] == model)]["energy_server"]
 carbon_client = round(ci_client * energy_client, 2)
+carbon_client_list = carbon_client.tolist()
 carbon_server = round(ci_server * energy_server, 2)
+carbon_server_list = carbon_server.tolist()
 carbon_total = round(carbon_client + carbon_server, 2)
-
-carbon_emissions = carbon_total[partition_point-1]
-change = round((((carbon_emissions - carbon_total[7])/ carbon_total[7]) * 100))
+carbon_total_list = carbon_total.tolist()
+change = round((((carbon_total_list[partition_point-1] - carbon_total_list[7])/ carbon_total_list[7]) * 100))
 
 col1, col2 = st.columns(2)
 with col1:
     st.markdown("**Full Model on Client**")
-    st.metric("gCO2", f"{carbon_total[7]}")
+    st.metric("Total [gCO2]", f"{carbon_total_list[7]}")
+    sub_col1, sub_col2 = st.columns(2)
+    with sub_col1:
+        st.metric("Client [gCO2]", f"{carbon_client_list[7]}")
+    with sub_col2:
+        st.metric("Server [gCO2]", f"{carbon_server_list[7]}")
 with col2:
     if partition_point < 8 and partition_point > 1:
-        text = f"{partition_point} Layers on Client"
+        text = f"{partition_point} Blocks on Client"
     elif partition_point == 1:
-        text = f"{partition_point} Layer on Client"
+        text = f"{partition_point} Block on Client"
     else:
         text = "Full Model on Client"
     st.markdown(f"**{text}**")
-    st.metric("gCO2", f"{carbon_emissions}", f"{change} %", delta_color="inverse")
-
+    st.metric("Total [gCO2]", f"{carbon_total_list[partition_point-1]}", f"{change} %", delta_color="inverse")
+    sub_col1, sub_col2 = st.columns(2)
+    with sub_col1:
+        st.metric("Client [gCO2]", f"{carbon_client_list[partition_point-1]}")
+    with sub_col2:
+        st.metric("Server [gCO2]", f"{carbon_server_list[partition_point-1]}")
