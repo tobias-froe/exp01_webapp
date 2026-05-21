@@ -5,23 +5,29 @@ summary_df = pd.read_csv("summary.csv")
 
 
 @st.dialog("Background")
-def help(heading, description):
+def help(heading, description, info=None):
     st.markdown(f"# {heading}")
     st.markdown(description)
+    if info:
+        st.info(info[0], icon=info[1])
 
 st.title("Can Model Partitioning Reduce Machine Learning Carbon Emissions?")
 st.markdown('''
             Training machine learning (ML) models requires significant amounts of energy, which can result in high carbon emissions.
               
             ''')
-st.info('''Explore how **carbon intensity** and **model size** affect the **carbon footprint**.''', icon=":material/swipe_down:")
-st.info('''What happens when you **partition** the model and **offload** part of the work to the server?''', icon=":material/mystery:")
+st.info('''Explore how **carbon intensity**, **model size**, and **model partitioning** affect the **carbon footprint**.''', icon=":material/swipe_down:")
 
 st.markdown("#### Carbon Intensity")
 heading = "What is carbon intensity?"
 if st.button(heading, key="ci_button", icon=":material/co2:"):
-    description = "Carbon intensity denotes how clean a given energy source is. It varies temporally and geographically."
-    help(heading, description)
+    description = '''
+    - Carbon intensity denotes how much carbon was emitted by producing one unit of electricity  
+    - Renewable energy sources, such as wind or solar, have significantly lower carbon intensities than fossil fuel-based sources, such as gas or coal  
+    - As electricity grids around the world consist of different combinations of energy sources, the carbon intensity varies from grid to grid
+    '''
+    info = ["Does moving the client or server to a different location lower the carbon footprint?", ":material/globe_location_pin:"]
+    help(heading, description, info)
 cols = st.columns(2)
 
 with cols[0]:
@@ -63,8 +69,18 @@ ci_server = carbon_intensities[server_location]
 st.markdown("#### Model")
 heading = "What are these models?"
 if st.button(heading, key="model1_btn", icon=":material/graph_4:"):
-    description = "Purpose of these models (task) and size comparison to modern LLM."
-    help(heading, description)
+    description = '''
+    - The models considered in this study are trained for **image classification**, so assigning predetermined classes to an image based on its content
+    - The main difference between these models is their **size**, i.e., their number of parameters
+        - "small": ~100 million
+        - "medium": ~200 million
+        - "large": ~250 million
+        - To put these numbers into perspective: some modern large language models (LLMs) are estimated to have over 1 trillion parameters.
+    - **More parameters** mean the model can be adjusted more precisely, which can improve its **accuracy**
+    - However, this also results in **more work** during the training to adjust all those extra parameters
+'''
+    info = ["How does model size affect the overall carbon footprint?", ":material/bid_landscape:"]
+    help(heading, description, info)
 
 model_options = ["small", "medium", "large"]
 model_selection = st.pills("Size", model_options, default=model_options[1], selection_mode="single")
@@ -74,12 +90,14 @@ model = model_names[model_selection]
 st.markdown("#### Partitioning")
 heading = "How does model partitioning work?"
 if st.button(heading, key="partitioning_btn", icon=":material/content_cut:"):
-    description = '''A machine learning model consists of a sequence of layers.  
-    In model partitioning, models are **split into blocks** consisting of one or more layers that can then be **offloaded** to a more powerful server.
-    This **reduces the computational load**, and thereby the energy consumption, of the client but increases the computational load and energy consumption of the server.  
-    Therefore, moving blocks between client and server allows us to essentially **shift energy consumption** between them.
+    description = '''
+    - A machine learning model consists of a sequence of layers   
+    - In model partitioning, models are **split into blocks** consisting of one or more layers that can then be **offloaded** to a more powerful server
+    - This **reduces the computational load**, and thereby the energy consumption, of the client but increases the computational load and energy consumption of the server  
+    - Therefore, moving blocks between client and server allows us to essentially **shift energy consumption** between them
 '''
-    help(heading, description)
+    info = ["What happens to the carbon emissions when you **partition** the model and **offload** part of the work to the server?", ":material/split_scene:"]
+    help(heading, description, info)
 
 part_columns = st.columns([0.1, 0.8, 0.1], gap="small")
 with part_columns[0]:
@@ -116,7 +134,7 @@ for i in range(partition_point+1, 9):
 
 st.markdown("### Estimated Carbon Footprint")
 heading = "How is the carbon footprint calculated for ML model training?"
-if st.button(heading, key="carbon_btn", icon=":material/calculate:"):
+if st.button(heading, key="carbon_btn", icon=":material/mystery:"):
     description = '''The carbon emissions are calculated with the following formula:    
     $C=CI_{Client} \\times E_{Client} + CI_{Server} \\times E_{Server}$
     \n\n where *CI* is the current carbon intensity and *E* is the energy consumed by the computing hardware during the training.
