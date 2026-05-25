@@ -177,3 +177,13 @@ with col2:
         st.metric("Client [gCO2]", f"{carbon_client_list[partition_point-1]}")
     with sub_col2:
         st.metric("Server [gCO2]", f"{carbon_server_list[partition_point-1]}")
+
+st.markdown("### Connect with me")
+col1, col2 = st.columns([0.25, 0.75])
+
+with col1:
+    st.image("linkedin.png")
+
+with col2:
+    st.space("medium")
+    st.markdown("Add me on LinkedIn")
